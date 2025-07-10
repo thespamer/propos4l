@@ -1,0 +1,13 @@
+fastapi>=0.104.0
+uvicorn>=0.24.0
+python-multipart>=0.0.6
+langchain>=0.0.330
+pymupdf>=1.23.5
+faiss-cpu>=1.7.4
+python-docx>=0.8.11
+weasyprint>=60.1
+Jinja2>=3.1.2
+pytesseract>=0.3.10
+pydantic>=2.4.2
+python-dotenv>=1.0.0
+sentence-transformers>=2.2.2

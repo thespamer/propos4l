@@ -1,0 +1,161 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.env
+.env.*
+!.env.example
+
+# Testing
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Build
+.next/
+out/
+build/
+dist/
+*.egg-info/
+develop-eggs/
+downloads/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg
+
+# Cache
+.cache/
+.npm
+.eslintcache
+.parcel-cache
+*.pyc
+.ruff_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Project specific
+/uploads/
+/pdf_storage/
+/templates/generated/
+.vector_store/
+*.pkl
+*.faiss
+*.index
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Database
+*.sqlite3
+*.db
+postgres_data/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.pid
+*.seed
+*.pid.lock
+
+# Local development
+.local/
+local_settings.py
+
+# Frontend specific
+.turbo
+.vercel
+.next
+storybook-static/
+public/uploads/
+
+# Backend specific
+instance/
+.webassets-cache/
+celerybeat-schedule
+celerybeat.pid
+*.pot
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Documentation
+/site
+docs/_build/
+doc/_build/
+
+# Secrets and keys
+*.pem
+*.key
+*.crt
+*.cer
+*.priv
+*.pub
+
+# Logs and databases
+*.log
+*.sql
+*.sqlite
+
+# Media and generated files
+media/
+static/generated/
+uploads/
+downloads/
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.csv
+!templates/*.pdf
+!examples/*.pdf
+
+# Misc
+.DS_Store
+*.pem
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

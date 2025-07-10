@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20mm;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 2em;
+            border-bottom: 2px solid #0066cc;
+            padding-bottom: 1em;
+        }
+        h1 {
+            color: #0066cc;
+            font-size: 24pt;
+            margin-bottom: 0.5em;
+        }
+        h2 {
+            color: #004d99;
+            font-size: 16pt;
+            margin-top: 1.5em;
+            border-bottom: 1px solid #eee;
+        }
+        .section {
+            margin: 2em 0;
+        }
+        .footer {
+            margin-top: 4em;
+            text-align: center;
+            font-size: 10pt;
+            color: #666;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1em 0;
+        }
+        th, td {
+            padding: 0.5em;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #f5f5f5;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ title }}</h1>
+        <p>Data: {{ date }}</p>
+    </div>
+
+    <div class="section">
+        <h2>Contexto</h2>
+        {{ context }}
+    </div>
+
+    <div class="section">
+        <h2>Solução Proposta</h2>
+        {{ solution }}
+    </div>
+
+    <div class="section">
+        <h2>Escopo do Projeto</h2>
+        {{ scope }}
+    </div>
+
+    <div class="section">
+        <h2>Cronograma</h2>
+        {{ timeline }}
+    </div>
+
+    <div class="section">
+        <h2>Investimento</h2>
+        {{ investment }}
+    </div>
+
+    <div class="footer">
+        <p>Proposta gerada por Propos4l - Sistema Inteligente de Automação de Propostas</p>
+    </div>
+</body>
+</html>
