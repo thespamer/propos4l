@@ -10,6 +10,19 @@ from app.core.monitoring import monitor_performance
 
 logger = get_logger(__name__)
 
+class NLPServiceStore:
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._service = NLPService()
+        return cls._instance
+    
+    def __getattr__(self, name):
+        # Delegate all method calls to the underlying NLPService instance
+        return getattr(self._service, name)
+
 class NLPService:
     def __init__(self):
         """Initialize NLP models and components"""

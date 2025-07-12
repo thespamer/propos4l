@@ -17,11 +17,11 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.models.database import Document, SemanticBlock, BlockType
 from app.database import get_session
-from langchain.llms import OpenAI
+from langchain_community.llms import OpenAI
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
-from langchain.embeddings import OpenAIEmbeddings
+from langchain_community.embeddings import OpenAIEmbeddings
 from app.core.logging import get_logger
 from app.core.monitoring import monitor_performance, performance_metrics, get_system_metrics
 from app.services.nlp_service import NLPService

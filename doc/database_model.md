@@ -130,38 +130,41 @@ CREATE INDEX idx_versions_number ON versions(proposal_id, version_number);
 ## Modelo de Vetores FAISS
 
 ```mermaid
-graph TB
+flowchart TB
     subgraph VectorDB["Vector Database (FAISS)"]
         direction TB
         Index["Índice Principal"]
         Metadata["Metadados"]
         
         subgraph Vectors["Vetores"]
+            direction TB
             ProposalVecs["Vetores de Propostas"]
             BlockVecs["Vetores de Blocos"]
             TemplateVecs["Vetores de Templates"]
         end
         
         subgraph Mapping["Mapeamento"]
+            direction LR
             VecToID["Vetor → ID"]
             IDToMetadata["ID → Metadados"]
         end
+        
+        %% Conexões
+        Index -->|"indexa"| ProposalVecs
+        Index -->|"indexa"| BlockVecs
+        Index -->|"indexa"| TemplateVecs
+        ProposalVecs -->|"mapeia"| VecToID
+        BlockVecs -->|"mapeia"| VecToID
+        TemplateVecs -->|"mapeia"| VecToID
+        VecToID -->|"resolve"| IDToMetadata
+        IDToMetadata -->|"consulta"| Metadata
     end
-    
-    Index --> ProposalVecs
-    Index --> BlockVecs
-    Index --> TemplateVecs
-    ProposalVecs --> VecToID
-    BlockVecs --> VecToID
-    TemplateVecs --> VecToID
-    VecToID --> IDToMetadata
-    IDToMetadata --> Metadata
 ```
 
 ## Cache Redis
 
 ```mermaid
-graph TB
+flowchart TB
     subgraph Redis["Redis Cache"]
         direction TB
         Jobs["Jobs Queue"]
@@ -169,19 +172,25 @@ graph TB
         ProposalCache["Proposal Cache"]
         
         subgraph JobStatus["Status dos Jobs"]
+            direction LR
             Pending["Pendentes"]
             Processing["Em Processamento"]
             Completed["Concluídos"]
+            
+            Pending -->|"inicia"| Processing
+            Processing -->|"finaliza"| Completed
         end
         
         subgraph CacheKeys["Chaves de Cache"]
+            direction TB
             UserData["Dados do Usuário"]
             TemplateData["Templates"]
             ProposalData["Propostas"]
         end
+        
+        %% Conexões
+        Jobs -->|"gerencia"| JobStatus
+        Sessions -->|"armazena"| UserData
+        ProposalCache -->|"utiliza"| CacheKeys
     end
-    
-    Jobs --> JobStatus
-    Sessions --> UserData
-    ProposalCache --> CacheKeys
 ```

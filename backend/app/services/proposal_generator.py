@@ -2,11 +2,11 @@ from typing import Dict, List, Optional, Union
 from pathlib import Path
 import jinja2
 from weasyprint import HTML
-from langchain.llms import OpenAI
+from langchain_community.llms import OpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings import OpenAIEmbeddings
+from langchain_community.embeddings import OpenAIEmbeddings
 import os
 import json
 

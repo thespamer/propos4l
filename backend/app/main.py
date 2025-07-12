@@ -1,14 +1,17 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Depends
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Depends, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from pathlib import Path
 from datetime import datetime
 from sqlmodel import Session
 import os
 import json
 import hashlib
+
+from app.api.endpoints.processing_status import router as processing_status_router
+from app.api.endpoints.processing_history import router as processing_history_router
 
 from app.services.proposal_generator import ProposalGenerator
 from app.services.pdf_processor import PDFProcessor
@@ -27,15 +30,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include routers
+app.include_router(processing_status_router, prefix="/api", tags=["processing-status"])
+app.include_router(processing_history_router, prefix="/api", tags=["processing-history"])
+
 # Initialize services
 data_dir = Path("data")
 data_dir.mkdir(exist_ok=True)
 proposals_dir = data_dir / "proposals"
 proposals_dir.mkdir(exist_ok=True)
 
-proposal_generator = ProposalGenerator()
-pdf_processor = PDFProcessor()
 vector_store = VectorStore(index_path=str(data_dir / "proposals.index"))
+proposal_generator = ProposalGenerator(vector_store=vector_store)
+pdf_processor = PDFProcessor()
 
 def save_proposal_metadata(proposal_id: str, metadata: dict):
     metadata_file = proposals_dir / f"{proposal_id}.json"
@@ -106,7 +113,7 @@ async def upload_proposal(
     session: Session = Depends(get_session)
 ):
     """
-    Upload and process a PDF proposal
+    Upload and process a single PDF proposal
     """
     try:
         contents = await file.read()
@@ -336,7 +343,121 @@ async def download_proposal(filename: str):
     """
     Download a generated proposal PDF
     """
-    file_path = data_dir / filename
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(str(file_path))
+    try:
+        file_path = Path(f"./data/generated/{filename}")
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+        return FileResponse(file_path, media_type="application/pdf", filename=filename)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class BulkUploadResponse(BaseModel):
+    """Response model for bulk upload"""
+    processed_count: int
+    successful_count: int
+    failed_count: int
+    proposal_ids: List[str]
+    errors: Dict[str, str] = Field(default_factory=dict)
+
+
+@app.post("/upload-proposals-bulk", response_model=BulkUploadResponse)
+async def upload_proposals_bulk(
+    files: List[UploadFile] = File(...),
+    metadata: str = Form(...),
+    session: Session = Depends(get_session)
+):
+    """
+    Upload and process multiple PDF proposals in a single request
+    """
+    import json
+    from concurrent.futures import ThreadPoolExecutor
+    
+    try:
+        # Parse metadata
+        metadata_dict = json.loads(metadata)
+        proposal_metadata = ProposalMetadata(**metadata_dict)
+        
+        results = {
+            "processed_count": len(files),
+            "successful_count": 0,
+            "failed_count": 0,
+            "proposal_ids": [],
+            "errors": {}
+        }
+        
+        # Process each file
+        for file in files:
+            try:
+                contents = await file.read()
+                
+                # Process PDF and extract text with metadata
+                document = await pdf_processor.process_pdf(
+                    pdf_content=contents,
+                    session=session
+                )
+                
+                # Set filename after document is created
+                document.filename = file.filename
+                session.commit()
+                
+                # Identify and extract sections
+                semantic_blocks = await pdf_processor.identify_sections(
+                    document=document,
+                    session=session
+                )
+                
+                # Organize sections by type
+                sections = {}
+                for block in semantic_blocks:
+                    if block.confidence_score >= 0.7:  # Only include high-confidence blocks
+                        sections[block.block_type.value] = {
+                            "content": block.content,
+                            "confidence": block.confidence_score
+                        }
+                
+                # Extract key information
+                extracted_info = await pdf_processor.extract_key_information(document, session)
+                
+                # Generate unique ID
+                proposal_id = f"proposal_{proposal_metadata.client_name.lower().replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{len(results['proposal_ids'])}"
+                
+                # Add to vector store
+                await vector_store.add_document(
+                    text=document.content,
+                    metadata={
+                        "id": proposal_id,
+                        "client_name": proposal_metadata.client_name,
+                        "industry": proposal_metadata.industry,
+                        "type": "uploaded",
+                        "filename": file.filename
+                    }
+                )
+                
+                # Save proposal metadata
+                proposal_data = {
+                    "id": proposal_id,
+                    "client_name": proposal_metadata.client_name,
+                    "industry": proposal_metadata.industry,
+                    "date": proposal_metadata.date,
+                    "status": "uploaded",
+                    "content": {
+                        "full_text": document.content,
+                        "summary": extracted_info.get("summary", "")
+                    },
+                    "sections": sections,
+                    "filename": file.filename
+                }
+                save_proposal_metadata(proposal_id, proposal_data)
+                
+                results["successful_count"] += 1
+                results["proposal_ids"].append(proposal_id)
+                
+            except Exception as e:
+                results["failed_count"] += 1
+                results["errors"][file.filename] = str(e)
+        
+        return results
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

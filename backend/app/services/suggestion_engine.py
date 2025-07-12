@@ -1,8 +1,8 @@
 from typing import Dict, List, Optional, Union
-from langchain.llms import OpenAI
+from langchain_community.llms import OpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
-from langchain.embeddings import OpenAIEmbeddings
+from langchain_community.embeddings import OpenAIEmbeddings
 import numpy as np
 
 from app.models.database import BlockType

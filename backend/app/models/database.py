@@ -24,7 +24,7 @@ class Document(SQLModel, table=True):
     ocr_status: str = Field(default="pending")  # pending, processing, completed, failed
     raw_text: str
     language: Optional[str] = None
-    metadata: dict = Field(default_factory=dict)
+    document_metadata: dict = Field(default_factory=dict, sa_type=JSON)
     vector_id: Optional[str] = None  # ID in the vector store
     
     # Relationships
@@ -40,13 +40,22 @@ class SemanticBlock(SQLModel, table=True):
     start_position: int  # Character position in document
     end_position: int
     confidence_score: float  # Confidence in block type classification
-    language_patterns: dict = Field(default_factory=dict)  # Identified patterns
-    formatting_metadata: dict = Field(default_factory=dict)  # Font, style, etc.
+    language_patterns: dict = Field(default_factory=dict, sa_type=JSON)  # Identified patterns
+    formatting_metadata: dict = Field(default_factory=dict, sa_type=JSON)  # Font, style, etc.
     vector_id: Optional[str] = None  # ID in the vector store
     
     # Relationships
     document: Document = Relationship(back_populates="blocks")
     used_in_proposals: List["ProposalBlock"] = Relationship(back_populates="source_block")
+
+class DocumentProposalLink(SQLModel, table=True):
+    """Many-to-many relationship between documents and proposals"""
+    document_id: Optional[int] = Field(
+        default=None, foreign_key="document.id", primary_key=True
+    )
+    proposal_id: Optional[int] = Field(
+        default=None, foreign_key="proposal.id", primary_key=True
+    )
 
 class Proposal(SQLModel, table=True):
     """Represents a generated proposal"""
@@ -56,14 +65,14 @@ class Proposal(SQLModel, table=True):
     industry: str
     creation_date: datetime = Field(default_factory=datetime.utcnow)
     status: str = Field(default="draft")  # draft, review, approved, archived
-    metadata: dict = Field(default_factory=dict)
+    proposal_metadata: dict = Field(default_factory=dict, sa_type=JSON)
     vector_id: Optional[str] = None  # ID in the vector store
     current_version: int = Field(default=1)
     
     # Relationships
     blocks: List["ProposalBlock"] = Relationship(back_populates="proposal")
     source_documents: List[Document] = Relationship(back_populates="proposals", 
-                                                  link_model="DocumentProposalLink")
+                                                  link_model=DocumentProposalLink)
     versions: List["ProposalVersion"] = Relationship(back_populates="proposal")
     comments: List["Comment"] = Relationship(back_populates="proposal")
 
@@ -76,13 +85,11 @@ class ProposalBlock(SQLModel, table=True):
     order: int  # Position in the proposal
     is_ai_generated: bool = Field(default=False)
     source_block_id: Optional[int] = Field(foreign_key="semanticblock.id")
-    generation_params: dict = Field(default_factory=dict)  # AI generation parameters
+    generation_params: dict = Field(default_factory=dict, sa_type=JSON)  # AI generation parameters
     
     # Relationships
     proposal: Proposal = Relationship(back_populates="blocks")
     source_block: Optional[SemanticBlock] = Relationship(back_populates="used_in_proposals")
-
-class DocumentProposalLink(SQLModel, table=True):
     """Many-to-many relationship between documents and proposals"""
     document_id: Optional[int] = Field(
         default=None, foreign_key="document.id", primary_key=True

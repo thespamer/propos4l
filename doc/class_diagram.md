@@ -4,6 +4,8 @@
 
 ```mermaid
 classDiagram
+    direction TB
+
     class Proposal {
         +UUID id
         +String title
@@ -14,10 +16,10 @@ classDiagram
         +List~Section~ sections
         +Map~String,String~ metadata
         +Template template
-        +create()
-        +update()
-        +delete()
-        +export(format: ExportFormat)
+        +create() void
+        +update() void
+        +delete() void
+        +export(ExportFormat format) Document
     }
 
     class Section {
@@ -27,8 +29,8 @@ classDiagram
         +Integer order
         +String content
         +List~Block~ blocks
-        +reorder(newOrder: Integer)
-        +updateContent(content: String)
+        +reorder(Integer newOrder) void
+        +updateContent(String content) void
     }
 
     class Block {
@@ -37,8 +39,8 @@ classDiagram
         +BlockType type
         +String content
         +JSON metadata
-        +analyze()
-        +validate()
+        +analyze() Analysis
+        +validate() boolean
     }
 
     class Template {
@@ -46,105 +48,109 @@ classDiagram
         +String name
         +JSON structure
         +Boolean isActive
-        +apply(proposal: Proposal)
-        +validate()
+        +apply(Proposal proposal) Document
+        +validate() boolean
     }
 
     class ProposalGenerator {
         -VectorStore vectorStore
         -LLMService llmService
         -TemplateEngine templateEngine
-        +generateProposal(params: GenerationParams)
-        +updateProposal(proposal: Proposal)
-        -findSimilarProposals()
-        -generateContent()
+        +generateProposal(GenerationParams params) Proposal
+        +updateProposal(Proposal proposal) Proposal
+        -findSimilarProposals() List~Proposal~
+        -generateContent() String
     }
 
     class PDFProcessor {
         -OCREngine ocrEngine
         -NLPService nlpService
         -VectorStore vectorStore
-        +processDocument(file: File)
-        +extractText()
-        +identifySections()
-        -vectorize()
+        +processDocument(File file) Document
+        +extractText() String
+        +identifySections() List~Section~
+        -vectorize() Vector
     }
 
     class VectorStore {
         -FAISSIndex index
         -Database db
-        +search(query: String, limit: Integer)
-        +add(document: Document)
-        +delete(id: UUID)
-        -updateIndex()
+        +search(String query, Integer limit) List~Document~
+        +add(Document document) void
+        +delete(UUID id) void
+        -updateIndex() void
     }
 
-    Proposal "1" *-- "many" Section
-    Section "1" *-- "many" Block
-    Proposal "many" -- "1" Template
-    ProposalGenerator -- VectorStore
-    PDFProcessor -- VectorStore
+    %% Relationships
+    Proposal "1" *-- "many" Section : contains
+    Section "1" *-- "many" Block : contains
+    Proposal "many" -- "1" Template : uses
+    ProposalGenerator ..> VectorStore : uses
+    PDFProcessor ..> VectorStore : uses
 ```
 
 ## Diagrama de Classes do Frontend
 
 ```mermaid
 classDiagram
+    direction TB
+
     class App {
-        +render()
+        +render() ReactNode
     }
 
     class ProposalForm {
         -FormData formData
         -Boolean loading
-        +handleSubmit()
-        +handleInputChange()
-        +validate()
+        +handleSubmit() Promise~void~
+        +handleInputChange(Event e) void
+        +validate() boolean
     }
 
     class PDFUploader {
         -File file
         -UploadStatus status
-        +handleUpload()
-        +validateFile()
-        -processUpload()
+        +handleUpload() Promise~void~
+        +validateFile() boolean
+        -processUpload() Promise~void~
     }
 
     class PDFViewer {
         -String url
         -Number currentPage
-        +nextPage()
-        +previousPage()
-        +zoom()
+        +nextPage() void
+        +previousPage() void
+        +zoom(Number scale) void
     }
 
     class ProposalList {
         -Array~Proposal~ proposals
         -Pagination pagination
-        +loadProposals()
-        +filterProposals()
-        +sortProposals()
+        +loadProposals() Promise~void~
+        +filterProposals(Filter filter) void
+        +sortProposals(SortOption sort) void
     }
 
     class ToastContext {
         -Array~Toast~ toasts
-        +showToast()
-        +hideToast()
+        +showToast(ToastOptions options) void
+        +hideToast(String id) void
     }
 
     class LoadingContext {
         -Boolean isLoading
         -String message
-        +setLoading()
-        +clearLoading()
+        +setLoading(String message) void
+        +clearLoading() void
     }
 
-    App -- ProposalForm
-    App -- PDFUploader
-    App -- PDFViewer
-    App -- ProposalList
-    ProposalForm -- ToastContext
-    PDFUploader -- LoadingContext
+    %% Relationships
+    App ..> ProposalForm : renders
+    App ..> PDFUploader : renders
+    App ..> PDFViewer : renders
+    App ..> ProposalList : renders
+    ProposalForm ..> ToastContext : uses
+    PDFUploader ..> LoadingContext : uses
 ```
 
 ## Diagrama de Classes de Serviços

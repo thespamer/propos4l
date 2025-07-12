@@ -10,13 +10,22 @@ O Propos4l resolve o desafio comum em empresas de consultoria de TI: a criação
 
 ```mermaid
 flowchart LR
-    A[PDF Existente] -->|Upload| B[Processamento OCR]
-    B --> C[Extração de Blocos]
-    C --> D[Armazenamento Vetorial]
-    E[Nova Requisição] -->|Parâmetros| F[Geração IA]
-    D -->|Contexto| F
-    F --> G[Proposta Final]
-    G -->|Export| H[PDF/Word/HTML]
+    A["PDF Existente"]
+    B["Processamento OCR"]
+    C["Extração de Blocos"]
+    D["Armazenamento Vetorial"]
+    E["Nova Requisição"]
+    F["Geração IA"]
+    G["Proposta Final"]
+    H["PDF/Word/HTML"]
+    
+    A -->|"Upload"| B
+    B --> C
+    C --> D
+    E -->|"Parâmetros"| F
+    D -->|"Contexto"| F
+    F --> G
+    G -->|"Export"| H
 ```
 
 ## 🏗️ Arquitetura do Sistema
@@ -55,13 +64,13 @@ C4Context
 flowchart TB
     subgraph Components["Componentes React"]
         direction TB
-        App["App Root"] --> Layout["Layout"]
-        Layout --> Nav["Navigation"]
-        Layout --> Main["Main Content"]
-        
-        Main --> Upload["Upload Form"]
-        Main --> Generator["Proposal Generator"]
-        Main --> Preview["PDF Preview"]
+        App["App Root"]
+        Layout["Layout"]
+        Nav["Navigation"]
+        Main["Main Content"]
+        Upload["Upload Form"]
+        Generator["Proposal Generator"]
+        Preview["PDF Preview"]
         
         subgraph Contexts["Contextos Globais"]
             direction LR
@@ -70,6 +79,12 @@ flowchart TB
             Auth["Auth Context"]
         end
         
+        App --> Layout
+        Layout --> Nav
+        Layout --> Main
+        Main --> Upload
+        Main --> Generator
+        Main --> Preview
         Upload --> Toast
         Generator --> Toast
         Upload --> Loading
@@ -129,22 +144,30 @@ erDiagram
 
 ```mermaid
 flowchart TB
-    subgraph Frontend["Frontend (Next.js)"]    
-        UI["Interface do Usuário"] --> ApiClient["API Client"]
+    subgraph Frontend["Frontend (Next.js)"]
+        UI["Interface do Usuário"]
+        ApiClient["API Client"]
+        UI --> ApiClient
     end
 
-    subgraph Backend["Backend (FastAPI)"]    
-        API["API REST"] --> PG["Proposal Generator"]
-        API --> PP["PDF Processor"]
-        API --> VS["Vector Store"]
+    subgraph Backend["Backend (FastAPI)"]
+        API["API REST"]
+        PG["Proposal Generator"]
+        PP["PDF Processor"]
+        VS["Vector Store"]
+        DB[("PostgreSQL")]
+        VDB[("Vector DB")]
         
-        PG -->|Gera| DB[(PostgreSQL)]
+        API --> PG
+        API --> PP
+        API --> VS
+        PG -->|Gera| DB
         PP -->|Armazena| DB
-        VS -->|Consulta| VDB[(Vector DB)]
+        VS -->|Consulta| VDB
     end
 
     subgraph Services["Serviços Externos"]
-        LLM["LLM (Ollama)"] 
+        LLM["LLM (Ollama)"]
         Redis["Cache (Redis)"]
     end
 
@@ -160,33 +183,52 @@ flowchart TB
 ```mermaid
 flowchart TB
     subgraph Input["Entrada de Dados"]
-        PDF["PDF Upload"] --> OCR["OCR Engine"]
-        Form["Form Input"] --> Validation["Validação"]
+        PDF["PDF Upload"]
+        OCR["OCR Engine"]
+        Form["Form Input"]
+        Validation["Validação"]
+        
+        PDF --> OCR
+        Form --> Validation
     end
     
     subgraph Processing["Processamento"]
-        OCR --> TextExtraction["Extração de Texto"]
-        TextExtraction --> Chunking["Chunking"]
-        Chunking --> Embedding["Embedding"]
+        TextExtraction["Extração de Texto"]
+        Chunking["Chunking"]
+        Embedding["Embedding"]
+        ParamProcess["Processamento de Parâmetros"]
+        Context["Contexto"]
+        VectorDB["Vector Database"]
+        SimilaritySearch["Busca por Similaridade"]
         
-        Validation --> ParamProcess["Processamento de Parâmetros"]
-        ParamProcess --> Context["Contexto"]
-        
-        Embedding --> VectorDB["Vector Database"]
-        VectorDB --> SimilaritySearch["Busca por Similaridade"]
+        OCR --> TextExtraction
+        TextExtraction --> Chunking
+        Chunking --> Embedding
+        Validation --> ParamProcess
+        ParamProcess --> Context
+        Embedding --> VectorDB
+        VectorDB --> SimilaritySearch
         SimilaritySearch --> Context
     end
     
     subgraph Generation["Geração"]
-        Context --> PromptGen["Geração de Prompt"]
-        PromptGen --> LLM["LLM"]
-        LLM --> PostProcess["Pós-processamento"]
+        PromptGen["Geração de Prompt"]
+        LLM["LLM"]
+        PostProcess["Pós-processamento"]
+        
+        Context --> PromptGen
+        PromptGen --> LLM
+        LLM --> PostProcess
     end
     
     subgraph Output["Saída"]
-        PostProcess --> Template["Template"]
-        Template --> FinalDoc["Documento Final"]
-        FinalDoc --> Export["Exportação"]        
+        Template["Template"]
+        FinalDoc["Documento Final"]
+        Export["Exportação"]
+        
+        PostProcess --> Template
+        Template --> FinalDoc
+        FinalDoc --> Export
     end
 ```
 
@@ -328,25 +370,37 @@ stateDiagram-v2
 ```mermaid
 flowchart LR
     subgraph Local["Desenvolvimento Local"]
-        Dev["Desenvolvimento"] --> Test["Testes Locais"]
+        Dev["Desenvolvimento"]
+        Test["Testes Locais"]
+        Dev --> Test
     end
     
     subgraph CI["Integração Contínua"]
-        Push["Git Push"] --> Lint["Linting"]
-        Lint --> Build["Build"]
-        Build --> UnitTest["Testes Unitários"]
-        UnitTest --> IntegTest["Testes de Integração"]
+        Push["Git Push"]
+        Lint["Linting"]
+        Build["Build"]
+        UnitTest["Testes Unitários"]
+        IntegTest["Testes de Integração"]
+        
+        Push --> Lint
+        Lint --> Build
+        Build --> UnitTest
+        UnitTest --> IntegTest
     end
     
-    
     subgraph CD["Entrega Contínua"]
-        IntegTest --> Stage["Staging"]
-        Stage --> E2E["Testes E2E"]
-        E2E --> Prod["Produção"]
+        Stage["Staging"]
+        E2E["Testes E2E"]
+        Prod["Produção"]
+        Monitor["Monitoramento"]
+        
+        IntegTest --> Stage
+        Stage --> E2E
+        E2E --> Prod
+        Prod --> Monitor
     end
     
     Test --> Push
-    Prod --> Monitor["Monitoramento"]
 ```
 
 ### Fluxo de Dados em Tempo Real
