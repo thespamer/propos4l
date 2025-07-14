@@ -52,6 +52,7 @@ flowchart TB
     VectorDB --> Search
     Generation --> Cache
     PDF --> S3
+```
 
 ## Fluxo de Processamento de PDF
 

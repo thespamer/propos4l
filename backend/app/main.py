@@ -12,6 +12,7 @@ import hashlib
 
 from app.api.endpoints.processing_status import router as processing_status_router
 from app.api.endpoints.processing_history import router as processing_history_router
+from app.api.endpoints.templates import router as templates_router
 
 from app.services.proposal_generator import ProposalGenerator
 from app.services.pdf_processor import PDFProcessor
@@ -33,6 +34,7 @@ app.add_middleware(
 # Include routers
 app.include_router(processing_status_router, prefix="/api", tags=["processing-status"])
 app.include_router(processing_history_router, prefix="/api", tags=["processing-history"])
+app.include_router(templates_router, prefix="/api/templates", tags=["templates"])
 
 # Initialize services
 data_dir = Path("data")

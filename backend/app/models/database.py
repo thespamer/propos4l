@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict
 from sqlmodel import Field, SQLModel, Relationship
 from enum import Enum
 from sqlalchemy import JSON
@@ -144,3 +144,28 @@ class Comment(SQLModel, table=True):
             "cascade": "all, delete-orphan"
         }
     )
+
+class Template(SQLModel, table=True):
+    """Represents a proposal template that can be used to generate new proposals"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    description: str = Field(default="")
+    creation_date: datetime = Field(default_factory=datetime.utcnow)
+    source_document_id: Optional[int] = Field(foreign_key="document.id")
+    structure: Dict = Field(default_factory=dict, sa_type=JSON)  # Structure of the template
+    
+    # Relationships
+    sections: List["TemplateSection"] = Relationship(back_populates="template")
+    source_document: Optional[Document] = Relationship()
+
+class TemplateSection(SQLModel, table=True):
+    """Represents a section in a proposal template"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    template_id: int = Field(foreign_key="template.id")
+    name: str  # Maps to BlockType
+    content: str  # Default content or placeholder
+    order: int  # Position in the template
+    metadata: Dict = Field(default_factory=dict, sa_type=JSON)  # Additional metadata
+    
+    # Relationships
+    template: Template = Relationship(back_populates="sections")

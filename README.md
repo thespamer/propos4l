@@ -349,6 +349,22 @@ interface GenerateRequest {
 }
 ```
 
+#### `POST /api/templates/`
+- Geração de templates a partir de PDFs de propostas
+```typescript
+interface TemplateCreateRequest {
+  file: File
+  name: string
+  description?: string
+}
+```
+
+#### `GET /api/templates/`
+- Listagem de templates disponíveis
+
+#### `GET /api/templates/{template_id}`
+- Detalhes de um template específico
+
 ## 📈 Fluxo de Desenvolvimento
 
 ### Ciclo de Desenvolvimento

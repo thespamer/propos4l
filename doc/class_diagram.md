@@ -46,10 +46,23 @@ classDiagram
     class Template {
         +UUID id
         +String name
+        +String description
+        +DateTime creationDate
+        +UUID sourceDocumentId
         +JSON structure
-        +Boolean isActive
+        +List~TemplateSection~ sections
         +apply(Proposal proposal) Document
         +validate() boolean
+    }
+    
+    class TemplateSection {
+        +UUID id
+        +UUID templateId
+        +String name
+        +String content
+        +Integer order
+        +JSON metadata
+        +updateContent(String content) void
     }
 
     class ProposalGenerator {
