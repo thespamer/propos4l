@@ -180,3 +180,9 @@ class VectorStore:
             stats[f"total_{block_type.value}_blocks"] = len(self.metadata[block_type])
         
         return stats
+        
+    def get_total_documents(self) -> int:
+        """
+        Get the total number of documents in the vector store
+        """
+        return len(self.metadata[IndexType.DOCUMENT])

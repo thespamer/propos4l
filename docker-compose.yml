@@ -62,7 +62,7 @@ services:
       - PYTHONPATH=/app
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - DEBUG=1
-      - LOG_LEVEL=DEBUG
+      - LOG_LEVEL=debug
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
     depends_on:
@@ -75,7 +75,7 @@ services:
       - pdf_storage:/app/storage/pdfs
       - template_storage:/app/storage/templates
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 10s
       timeout: 5s
       retries: 3

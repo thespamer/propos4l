@@ -76,6 +76,13 @@ async def root():
         "stored_proposals": doc_count
     }
 
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat()
+    }
+
 class ProposalMetadata(BaseModel):
     client_name: str
     industry: str

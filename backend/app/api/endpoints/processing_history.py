@@ -3,7 +3,7 @@ from typing import Dict, List, Optional
 from datetime import datetime, timedelta
 from sqlmodel import Session, select
 from app.database import get_session
-from app.services.processing_status import get_processing_status_service
+from app.services.processing_status import active_trackers, get_tracker, cleanup_old_trackers
 
 router = APIRouter()
 
@@ -13,24 +13,21 @@ async def get_active_processing_tasks(session: Session = Depends(get_session)):
     Retorna todas as tarefas de processamento ativas ou recentemente concluídas
     """
     try:
-        # Obter serviço de status de processamento
-        status_service = get_processing_status_service()
-        
-        # Obter todas as tarefas ativas
-        active_tasks = status_service.get_all_active_tasks()
+        # Limpar trackers antigos antes de retornar os ativos
+        cleanup_old_trackers()
         
         # Formatar resposta
         tasks = []
-        for task_id, task_info in active_tasks.items():
+        for task_id, tracker in active_trackers.items():
             tasks.append({
                 "id": task_id,
-                "fileName": task_info.get("file_name", "Arquivo desconhecido"),
-                "progress": task_info.get("progress", 0),
-                "isComplete": task_info.get("is_complete", False),
-                "startTime": task_info.get("start_time"),
-                "lastUpdate": task_info.get("last_update"),
-                "currentStep": task_info.get("current_step", ""),
-                "steps": task_info.get("steps", [])
+                "fileName": tracker.file_name,
+                "progress": tracker.overall_progress,
+                "isComplete": tracker.is_complete,
+                "startTime": tracker.start_time.isoformat() if tracker.start_time else None,
+                "lastUpdate": tracker.end_time.isoformat() if tracker.end_time else tracker.start_time.isoformat(),
+                "currentStep": tracker.get_current_step().name if tracker.get_current_step() else "",
+                "steps": [step.to_dict() for step in tracker.steps]
             })
         
         # Ordenar por hora de início (mais recentes primeiro)
@@ -46,13 +43,11 @@ async def delete_processing_task(task_id: str):
     Remove uma tarefa de processamento do histórico
     """
     try:
-        status_service = get_processing_status_service()
-        success = status_service.remove_task(task_id)
-        
-        if not success:
+        if task_id in active_trackers:
+            del active_trackers[task_id]
+            return {"message": f"Tarefa {task_id} removida com sucesso"}
+        else:
             raise HTTPException(status_code=404, detail=f"Tarefa {task_id} não encontrada")
-        
-        return {"message": f"Tarefa {task_id} removida com sucesso"}
     except HTTPException:
         raise
     except Exception as e:
@@ -64,11 +59,11 @@ async def get_processing_tasks_summary():
     Retorna um resumo das tarefas de processamento (total, concluídas, em andamento)
     """
     try:
-        status_service = get_processing_status_service()
-        active_tasks = status_service.get_all_active_tasks()
+        # Limpar trackers antigos antes de calcular o resumo
+        cleanup_old_trackers()
         
-        total = len(active_tasks)
-        completed = sum(1 for task in active_tasks.values() if task.get("is_complete", False))
+        total = len(active_trackers)
+        completed = sum(1 for tracker in active_trackers.values() if tracker.is_complete)
         in_progress = total - completed
         
         return {

@@ -37,7 +37,7 @@ class PDFProcessor:
         self.nlp_service = NLPService()
         
         # Initialize optimizers
-        self.batch_processor = BatchProcessor[str](batch_size=batch_size)
+        self.batch_processor = BatchProcessor[str, dict](batch_size=batch_size)
         self.vector_processor = VectorBatchProcessor(batch_size=100)
         self.cache_manager = CacheManager(max_size=1000)
         self.dataset_optimizer = DatasetOptimizer(chunk_size=1000)

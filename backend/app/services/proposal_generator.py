@@ -2,13 +2,16 @@ from typing import Dict, List, Optional, Union
 from pathlib import Path
 import jinja2
 from weasyprint import HTML
-from langchain_community.llms import OpenAI
+from langchain_community.llms import OpenAI, FakeListLLM
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_community.embeddings import OpenAIEmbeddings, FakeEmbeddings
 import os
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 from app.models.database import BlockType
 from app.services.vector_store import VectorStore, IndexType
