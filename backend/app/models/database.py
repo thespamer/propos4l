@@ -165,7 +165,7 @@ class TemplateSection(SQLModel, table=True):
     name: str  # Maps to BlockType
     content: str  # Default content or placeholder
     order: int  # Position in the template
-    metadata: Dict = Field(default_factory=dict, sa_type=JSON)  # Additional metadata
+    section_metadata: Dict = Field(default_factory=dict, sa_type=JSON)  # Additional metadata
     
     # Relationships
     template: Template = Relationship(back_populates="sections")
