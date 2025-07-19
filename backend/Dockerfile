@@ -68,7 +68,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # Create necessary directories
 RUN mkdir -p \
-    migrations/versions \
+    migrations/yoyo \
     storage/pdfs \
     storage/templates
 
@@ -79,7 +79,7 @@ RUN chmod +x /entrypoint.sh
 # Copy application code
 COPY . .
 COPY migrations migrations/
-COPY alembic.ini .
+COPY yoyo.ini .
 
 # Expose ports
 EXPOSE 8000 5678

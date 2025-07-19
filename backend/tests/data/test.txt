@@ -1,0 +1,5 @@
+Este é um arquivo de teste para o processamento de documentos.
+
+O sistema deve extrair entidades, palavras-chave e analisar a estrutura do texto.
+
+Vamos verificar se os passos de inicialização do backend são exibidos corretamente no frontend.

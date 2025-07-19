@@ -35,7 +35,11 @@ class TemplateGenerator:
         """
         try:
             # Process the PDF to extract document and sections
-            document = await self.pdf_processor.process_pdf(pdf_content, f"{name}.pdf", session)
+            document = await self.pdf_processor.process_pdf(
+            pdf_content=pdf_content,
+            filename=f"{name}.pdf",
+            session=session
+        )
             
             # Identify sections in the document
             await self.pdf_processor.identify_sections(document, session)

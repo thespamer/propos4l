@@ -7,11 +7,12 @@ type ProcessStep = {
   name: string
   description: string
   percentageOfTotal: number
-  status: 'waiting' | 'processing' | 'success' | 'error' | 'skipped'
+  status: 'waiting' | 'processing' | 'success' | 'error' | 'skipped' | 'initializing'
   details?: string
   startTime?: string
   endTime?: string
   error?: string
+  isInitStep?: boolean
 }
 
 type ProcessingStatus = {
@@ -36,30 +37,34 @@ export function useProcessingStatus(trackerId: string | null): UseProcessingStat
   const [error, setError] = useState<string | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [socket, setSocket] = useState<WebSocket | null>(null)
+  const [connectionAttempts, setConnectionAttempts] = useState(0)
+  const MAX_RECONNECT_ATTEMPTS = 3
 
   // Function to establish WebSocket connection
   const connectWebSocket = useCallback(() => {
+    if (connectionAttempts >= MAX_RECONNECT_ATTEMPTS) {
+      setError('Maximum connection attempts reached. Please refresh the page to try again.')
+      return
+    }
+    setConnectionAttempts(prev => prev + 1)
     if (!trackerId) {
       setError('No tracker ID provided')
       return
     }
 
-    // Close existing connection if any
-    if (socket) {
-      socket.close()
-    }
+    // Use backend URL from environment variable
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    const wsProtocol = backendUrl.startsWith('https') ? 'wss:' : 'ws:'
+    const wsHost = backendUrl.replace(/^https?:\/\//, '')
+    const wsUrl = `${wsProtocol}//${wsHost}/ws/processing-status/${trackerId}`
 
     try {
-      // Determine WebSocket URL based on environment
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const host = window.location.host
-      const wsUrl = `${protocol}//${host}/api/ws/processing-status/${trackerId}`
-
       const newSocket = new WebSocket(wsUrl)
 
       newSocket.onopen = () => {
         setIsConnected(true)
         setError(null)
+        setConnectionAttempts(0) // Reset counter on successful connection
       }
 
       newSocket.onmessage = (event) => {
@@ -68,18 +73,69 @@ export function useProcessingStatus(trackerId: string | null): UseProcessingStat
           if (data.error) {
             setError(data.error)
           } else {
+            // Add initialization steps if they don't exist
+            if (data.steps && !data.steps.some((s: ProcessStep) => s.isInitStep)) {
+              const initSteps = [
+                {
+                  id: 'init-spacy',
+                  name: 'Carregando SpaCy',
+                  description: 'Loading spaCy model...',
+                  percentageOfTotal: 0,
+                  status: 'initializing',
+                  isInitStep: true
+                },
+                {
+                  id: 'init-keywords',
+                  name: 'Inicializando Extratores',
+                  description: 'Initializing keyword extractors...',
+                  percentageOfTotal: 0,
+                  status: 'waiting',
+                  isInitStep: true
+                },
+                {
+                  id: 'init-transformer',
+                  name: 'Carregando Transformer',
+                  description: 'Loading sentence transformer...',
+                  percentageOfTotal: 0,
+                  status: 'waiting',
+                  isInitStep: true
+                }
+              ]
+
+              // Update initialization steps based on backend logs
+              const details = data.details as string | undefined
+              if (details && initSteps.length >= 3) {
+                // Destructure with type assertion since we checked length
+                const [spacyStep, keywordsStep, transformerStep] = initSteps as [ProcessStep, ProcessStep, ProcessStep]
+                
+                if (details.includes('Loading spaCy model')) {
+                  spacyStep.status = 'initializing'
+                  keywordsStep.status = 'waiting'
+                  transformerStep.status = 'waiting'
+                } else if (details.includes('Initializing keyword extractors')) {
+                  spacyStep.status = 'success'
+                  keywordsStep.status = 'initializing'
+                  transformerStep.status = 'waiting'
+                } else if (details.includes('Loading sentence transformer')) {
+                  spacyStep.status = 'success'
+                  keywordsStep.status = 'success'
+                  transformerStep.status = 'initializing'
+                }
+              }
+
+              data.steps = [...initSteps, ...data.steps]
+            }
             setStatus(data)
           }
         } catch (err) {
-          setError('Failed to parse WebSocket message')
           console.error('WebSocket message parse error:', err)
+          setError('Failed to parse WebSocket message')
         }
       }
 
       newSocket.onerror = (event) => {
-        setError('WebSocket connection error')
-        setIsConnected(false)
         console.error('WebSocket error:', event)
+        setError('WebSocket connection error')
       }
 
       newSocket.onclose = () => {
@@ -87,26 +143,21 @@ export function useProcessingStatus(trackerId: string | null): UseProcessingStat
       }
 
       setSocket(newSocket)
-
-      // Cleanup function
-      return () => {
-        newSocket.close()
-        setSocket(null)
-        setIsConnected(false)
-      }
     } catch (err) {
+      console.error('WebSocket connection error:', err)
       setError(`Failed to connect: ${err instanceof Error ? err.message : String(err)}`)
-      setIsConnected(false)
     }
-  }, [trackerId, socket])
+  }, [trackerId, connectionAttempts, MAX_RECONNECT_ATTEMPTS])
 
-  // Connect when trackerId changes
+  // Connect when trackerId changes and cleanup on unmount
   useEffect(() => {
-    const cleanup = connectWebSocket()
+    if (!trackerId) return
+
+    connectWebSocket()
     
     // Reconnect on network status change
     const handleOnline = () => {
-      if (!isConnected && trackerId) {
+      if (!isConnected && trackerId && connectionAttempts < MAX_RECONNECT_ATTEMPTS) {
         connectWebSocket()
       }
     }
@@ -115,9 +166,12 @@ export function useProcessingStatus(trackerId: string | null): UseProcessingStat
     
     return () => {
       window.removeEventListener('online', handleOnline)
-      if (cleanup) cleanup()
+      if (socket) {
+        socket.close()
+        setSocket(null)
+      }
     }
-  }, [trackerId, connectWebSocket, isConnected])
+  }, [trackerId, connectWebSocket, isConnected, socket])
 
   // Fetch initial status via REST API if WebSocket fails
   useEffect(() => {

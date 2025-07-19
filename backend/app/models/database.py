@@ -1,11 +1,13 @@
 from datetime import datetime
 from typing import Optional, List, Dict
 from sqlmodel import Field, SQLModel, Relationship
-from enum import Enum
+from typing import List, Optional, Dict, Any
 from sqlalchemy import JSON
 
-class BlockType(str, Enum):
+# Constantes para tipos de blocos (em vez de usar Enum para evitar problemas com Alembic)
+class BlockType:
     TITLE = "title"
+    CLIENT = "client"
     CONTEXT = "context"
     PROBLEM = "problem"
     SOLUTION = "solution"
@@ -13,7 +15,23 @@ class BlockType(str, Enum):
     TIMELINE = "timeline"
     INVESTMENT = "investment"
     DIFFERENTIALS = "differentials"
+    CASES = "cases"
     OTHER = "other"
+    
+    @classmethod
+    def values(cls) -> List[str]:
+        """Retorna todos os valores possíveis"""
+        return [value for key, value in cls.__dict__.items() 
+                if not key.startswith('_') and isinstance(value, str)]
+
+class DocumentProposalLink(SQLModel, table=True):
+    """Many-to-many relationship between documents and proposals"""
+    document_id: Optional[int] = Field(
+        default=None, foreign_key="document.id", primary_key=True
+    )
+    proposal_id: Optional[int] = Field(
+        default=None, foreign_key="proposal.id", primary_key=True
+    )
 
 class Document(SQLModel, table=True):
     """Represents a source document (PDF proposal)"""
@@ -29,13 +47,13 @@ class Document(SQLModel, table=True):
     
     # Relationships
     blocks: List["SemanticBlock"] = Relationship(back_populates="document")
-    proposals: List["Proposal"] = Relationship(back_populates="source_documents")
+    proposals: List["Proposal"] = Relationship(back_populates="source_documents", link_model=DocumentProposalLink)
 
 class SemanticBlock(SQLModel, table=True):
     """Represents a semantic block extracted from a document"""
     id: Optional[int] = Field(default=None, primary_key=True)
     document_id: int = Field(foreign_key="document.id")
-    block_type: BlockType
+    block_type: str  # Usar str em vez de BlockType para evitar criação de ENUM no banco
     content: str
     start_position: int  # Character position in document
     end_position: int
@@ -47,15 +65,6 @@ class SemanticBlock(SQLModel, table=True):
     # Relationships
     document: Document = Relationship(back_populates="blocks")
     used_in_proposals: List["ProposalBlock"] = Relationship(back_populates="source_block")
-
-class DocumentProposalLink(SQLModel, table=True):
-    """Many-to-many relationship between documents and proposals"""
-    document_id: Optional[int] = Field(
-        default=None, foreign_key="document.id", primary_key=True
-    )
-    proposal_id: Optional[int] = Field(
-        default=None, foreign_key="proposal.id", primary_key=True
-    )
 
 class Proposal(SQLModel, table=True):
     """Represents a generated proposal"""
@@ -80,7 +89,7 @@ class ProposalBlock(SQLModel, table=True):
     """Represents a block in a generated proposal"""
     id: Optional[int] = Field(default=None, primary_key=True)
     proposal_id: int = Field(foreign_key="proposal.id")
-    block_type: BlockType
+    block_type: str  # Usar str em vez de BlockType para evitar criação de ENUM no banco
     content: str
     order: int  # Position in the proposal
     is_ai_generated: bool = Field(default=False)
@@ -90,13 +99,6 @@ class ProposalBlock(SQLModel, table=True):
     # Relationships
     proposal: Proposal = Relationship(back_populates="blocks")
     source_block: Optional[SemanticBlock] = Relationship(back_populates="used_in_proposals")
-    """Many-to-many relationship between documents and proposals"""
-    document_id: Optional[int] = Field(
-        default=None, foreign_key="document.id", primary_key=True
-    )
-    proposal_id: Optional[int] = Field(
-        default=None, foreign_key="proposal.id", primary_key=True
-    )
 
 class User(SQLModel, table=True):
     """Represents a user in the system"""

@@ -4,13 +4,19 @@ from typing import List, Dict, Optional, Tuple, Union
 from sentence_transformers import SentenceTransformer
 import json
 from pathlib import Path
-from enum import Enum
+from typing import Dict, List, Optional, Any
 
 from app.models.database import BlockType
 
-class IndexType(str, Enum):
+class IndexType:
     DOCUMENT = "document"
     BLOCK = "block"
+    
+    @classmethod
+    def values(cls) -> List[str]:
+        """Retorna todos os valores possíveis"""
+        return [value for key, value in cls.__dict__.items() 
+                if not key.startswith('_') and isinstance(value, str)]
 
 class VectorStore:
     def __init__(self, model_name: str = "all-MiniLM-L6-v2", index_path: Optional[str] = None):
@@ -37,15 +43,15 @@ class VectorStore:
                 self.metadata[IndexType.DOCUMENT] = []
             
             # Load block indices for each block type
-            for block_type in BlockType:
-                block_index_path = self.index_dir / f"block_{block_type.value}_index.faiss"
+            for block_type_value in BlockType.values():
+                block_index_path = self.index_dir / f"block_{block_type_value}_index.faiss"
                 if block_index_path.exists():
-                    self.indices[block_type] = faiss.read_index(str(block_index_path))
+                    self.indices[block_type_value] = faiss.read_index(str(block_index_path))
                     with open(str(block_index_path.with_suffix('.json')), 'r') as f:
-                        self.metadata[block_type] = json.load(f)
+                        self.metadata[block_type_value] = json.load(f)
                 else:
-                    self.indices[block_type] = faiss.IndexFlatL2(self.dimension)
-                    self.metadata[block_type] = []
+                    self.indices[block_type_value] = faiss.IndexFlatL2(self.dimension)
+                    self.metadata[block_type_value] = []
         else:
             self.index_path = None
             self.index_dir = None

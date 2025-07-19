@@ -2,6 +2,7 @@ import fitz  # PyMuPDF
 from typing import Dict, List, Optional, Tuple, Any
 from pathlib import Path
 from sqlmodel import Session
+from sqlalchemy import select
 import pytesseract
 from pdf2image import convert_from_bytes
 from PIL import Image
@@ -91,6 +92,58 @@ class PDFProcessor:
         self._identify_section_cache = lru_cache(maxsize=1000)(self._identify_section_uncached)
         # Cache for language pattern detection
         self._detect_language_patterns_cache = lru_cache(maxsize=500)(self._detect_language_patterns_uncached)
+        # Cache for text extraction
+        self._extract_text_cache = lru_cache(maxsize=100)(self._extract_text_uncached)
+        
+    @monitor_performance()
+    async def extract_text(self, file_path: str) -> str:
+        """Extract text from a PDF file with caching"""
+        try:
+            # Read file content
+            with open(file_path, 'rb') as f:
+                content = f.read()
+            
+            # Calculate hash for cache key
+            content_hash = self._compute_file_hash(content)
+            
+            # Try to get from cache first
+            return await self._extract_text_cache(content_hash, content)
+            
+        except Exception as e:
+            self.logger.error(f"Error extracting text from PDF: {str(e)}")
+            raise
+    
+    @monitor_performance()
+    async def _extract_text_uncached(self, content_hash: str, content: bytes) -> str:
+        """Extract text from PDF content without caching"""
+        try:
+            # Open PDF with PyMuPDF
+            doc = fitz.open(stream=content, filetype="pdf")
+            
+            text_content = []
+            for page_num in range(len(doc)):
+                page = doc[page_num]
+                
+                # Extract text from page
+                text = page.get_text("text")
+                
+                # If no text found, try OCR
+                if not text.strip():
+                    # Convert PDF page to image
+                    pix = page.get_pixmap()
+                    img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                    
+                    # Extract text using OCR
+                    text = self._extract_text_from_image(img)
+                
+                text_content.append(text)
+            
+            doc.close()
+            return "\n".join(text_content)
+            
+        except Exception as e:
+            self.logger.error(f"Error in text extraction: {str(e)}")
+            raise
         # Cache for formatting metadata
         self._extract_formatting_metadata_cache = lru_cache(maxsize=500)(self._extract_formatting_metadata_uncached)
 
@@ -247,94 +300,6 @@ class PDFProcessor:
             # Process blocks in optimized batches
             await self.identify_sections(document, session)
             
-            return document
-            
-        except Exception as e:
-            self.logger.error(f"Error processing PDF {filename}: {str(e)}")
-            raise
-        """
-        Process a PDF file and store its content in the database
-        """
-        # Compute file hash
-        file_hash = self._compute_file_hash(pdf_content)
-        
-        # Check if already processed
-        existing_doc = session.query(Document).filter(Document.file_hash == file_hash).first()
-        if existing_doc:
-            self.logger.info(f"Document {filename} already processed, returning existing document")
-            return existing_doc
-        
-        try:
-            self.logger.info(f"Starting to process PDF {filename}")
-            pdf_document = fitz.open(stream=pdf_content, filetype="pdf")
-            
-            # Initialize document metadata
-            metadata = {
-                'formatting': [],
-                'language_patterns': [],
-                'page_count': len(pdf_document)
-            }
-            
-            # Process pages in batches
-            full_text = []
-            futures = []
-            
-            for page_num in range(len(pdf_document)):
-                if len(futures) >= self.batch_size:
-                    # Wait for current batch to complete
-                    for future in as_completed(futures):
-                        result = future.result()
-                        if result:
-                            text, page_metadata, patterns = result
-                            full_text.append(text)
-                            metadata['formatting'].append(page_metadata)
-                            metadata['language_patterns'].append(patterns)
-                    futures = []
-                
-                # Submit new page for processing
-                future = self.executor.submit(
-                    self._process_page,
-                    pdf_document[page_num],
-                    page_num
-                )
-                futures.append(future)
-            
-            # Process remaining pages
-            for future in as_completed(futures):
-                result = future.result()
-                if result:
-                    text, page_metadata, patterns = result
-                    full_text.append(text)
-                    metadata['formatting'].append(page_metadata)
-                    metadata['language_patterns'].append(patterns)
-            
-            document_text = "\n".join(full_text)
-            
-            # Create document record
-            document = Document(
-                filename=filename,
-                content=document_text,
-                file_hash=file_hash,
-                metadata=metadata
-            )
-            
-            session.add(document)
-            session.commit()
-            
-            # Add to vector store if available
-            if self.vector_store:
-                await self.vector_store.add_document(
-                    text=document_text,
-                    metadata={
-                        'document_id': document.id,
-                        'filename': filename,
-                        'file_hash': file_hash
-                    }
-                )
-            
-            self.logger.info(f"Successfully processed PDF {filename} with {len(pdf_document)} pages")
-            return document
-            
         except Exception as e:
             self.logger.error(f"Error processing PDF {filename}: {str(e)}")
             raise
@@ -399,100 +364,6 @@ class PDFProcessor:
         except Exception as e:
             self.logger.error(f"Error identifying sections: {str(e)}")
             raise
-        """
-        Identify and categorize different sections of the proposal
-        """
-        self.logger.info(f"Starting section identification for document {document.id}")
-        
-        # Split document into chunks
-        chunks = self.text_splitter.split_text(document.content)
-        self.logger.debug(f"Split document into {len(chunks)} chunks")
-        
-        blocks = []
-        current_position = 0
-        
-        # Process chunks in batches
-        for i in range(0, len(chunks), self.batch_size):
-            batch = chunks[i:i + self.batch_size]
-            futures = []
-            
-            # Submit batch for processing
-            for chunk in batch:
-                future = self.executor.submit(
-                    self._identify_section_uncached,
-                    chunk
-                )
-                futures.append(future)
-            
-            # Process results as they complete
-            for future in as_completed(futures):
-                try:
-                    sections = future.result()
-                    if not sections:
-                        continue
-                        
-                    # Process each identified section
-                    for section_name, content in sections.items():
-                        try:
-                            block_type = BlockType(section_name.lower())
-                        except ValueError:
-                            continue
-                        
-                        # Find content position
-                        start_pos = document.content.find(content, current_position)
-                        if start_pos == -1:
-                            continue
-                        end_pos = start_pos + len(content)
-                        
-                        # Get block metadata (parallel processing)
-                        metadata_future = self.executor.submit(
-                            self._get_block_metadata,
-                            content=content,
-                            document=document,
-                            start_pos=start_pos,
-                            end_pos=end_pos,
-                            block_type=block_type
-                        )
-                        
-                        block_metadata = metadata_future.result()
-                        if not block_metadata:
-                            continue
-                        
-                        # Create semantic block
-                        block = SemanticBlock(
-                            document_id=document.id,
-                            block_type=block_type,
-                            content=content,
-                            start_position=start_pos,
-                            end_position=end_pos,
-                            **block_metadata
-                        )
-                        blocks.append(block)
-                        
-                        # Add block to vector store
-                        if self.vector_store:
-                            await self.vector_store.add_semantic_block(
-                                block_type=block_type,
-                                content=content,
-                                metadata={
-                                    'document_id': document.id,
-                                    **block_metadata
-                                }
-                            )
-                        
-                        current_position = max(current_position, end_pos)
-                        
-                except Exception as e:
-                    self.logger.error(f"Error processing chunk result: {str(e)}")
-                    continue
-        
-        # Batch insert blocks
-        if blocks:
-            session.bulk_save_objects(blocks)
-            session.commit()
-            self.logger.info(f"Successfully identified and saved {len(blocks)} sections")
-        
-        return blocks
     
     @monitor_performance()
     def _identify_section_uncached(self, chunk: str) -> Optional[Dict[str, str]]:

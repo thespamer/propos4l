@@ -13,6 +13,7 @@ import hashlib
 from app.api.endpoints.processing_status import router as processing_status_router
 from app.api.endpoints.processing_history import router as processing_history_router
 from app.api.endpoints.templates import router as templates_router
+from app.api.endpoints.upload import router as upload_router
 
 from app.services.proposal_generator import ProposalGenerator
 from app.services.pdf_processor import PDFProcessor
@@ -25,7 +26,10 @@ app = FastAPI(title="Propos4l API", description="API for intelligent proposal au
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Frontend URL
+    allow_origins=[
+        "http://localhost:3000",  # Frontend URL local
+        "http://frontend:3000",    # Frontend URL Docker
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -35,6 +39,7 @@ app.add_middleware(
 app.include_router(processing_status_router, prefix="/api", tags=["processing-status"])
 app.include_router(processing_history_router, prefix="/api", tags=["processing-history"])
 app.include_router(templates_router, prefix="/api/templates", tags=["templates"])
+app.include_router(upload_router, prefix="/api/v1/proposals", tags=["proposals"])
 
 # Initialize services
 data_dir = Path("data")
@@ -130,6 +135,7 @@ async def upload_proposal(
         # Process PDF and extract text with metadata
         document = await pdf_processor.process_pdf(
             pdf_content=contents,
+            filename=file.filename,
             session=session
         )
         
@@ -403,6 +409,7 @@ async def upload_proposals_bulk(
                 # Process PDF and extract text with metadata
                 document = await pdf_processor.process_pdf(
                     pdf_content=contents,
+                    filename=file.filename,
                     session=session
                 )
                 

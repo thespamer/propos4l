@@ -146,7 +146,12 @@ export PYTHONPATH=/app:$PYTHONPATH
 case "$1" in
     "migrate")
         echo "Running database migrations..."
-        alembic upgrade head
+        export postgres_user="${POSTGRES_USER}"
+        export postgres_password="${POSTGRES_PASSWORD}"
+        export postgres_host="${POSTGRES_HOST}"
+        export postgres_port="${POSTGRES_PORT}"
+        export postgres_db="${POSTGRES_DB}"
+        yoyo apply --all
         ;;
     "debug")
         echo "Starting server in debug mode..."

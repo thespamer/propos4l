@@ -1,15 +1,21 @@
 from typing import Dict, List, Optional, Any
-from enum import Enum
+from typing import Dict, List, Optional, Any
 import asyncio
 import uuid
 from datetime import datetime
 
-class ProcessingStatus(str, Enum):
+class ProcessingStatus:
     WAITING = "waiting"
     PROCESSING = "processing"
     SUCCESS = "success"
     ERROR = "error"
     SKIPPED = "skipped"
+    
+    @classmethod
+    def values(cls) -> List[str]:
+        """Retorna todos os valores possíveis"""
+        return [value for key, value in cls.__dict__.items() 
+                if not key.startswith('_') and isinstance(value, str)]
 
 
 class ProcessingStep:
@@ -94,42 +100,42 @@ class ProcessingTracker:
             return self.steps[self.current_step_index]
         return None
 
-    def start_next_step(self, details: Optional[str] = None) -> Optional[ProcessingStep]:
+    async def start_next_step(self, details: Optional[str] = None) -> Optional[ProcessingStep]:
         self.current_step_index += 1
         if self.current_step_index < len(self.steps):
             step = self.steps[self.current_step_index]
             step.start(details)
             self._update_progress()
-            self._notify_subscribers()
+            await self._notify_subscribers()
             return step
         return None
 
-    def complete_current_step(self, details: Optional[str] = None) -> None:
+    async def complete_current_step(self, details: Optional[str] = None) -> None:
         if self.current_step_index < len(self.steps):
             step = self.steps[self.current_step_index]
             step.complete(details)
             self._update_progress()
-            self._notify_subscribers()
+            await self._notify_subscribers()
 
-    def fail_current_step(self, error: Exception, details: Optional[str] = None) -> None:
+    async def fail_current_step(self, error: Exception, details: Optional[str] = None) -> None:
         if self.current_step_index < len(self.steps):
             step = self.steps[self.current_step_index]
             step.fail(error, details)
             self._update_progress()
-            self._notify_subscribers()
+            await self._notify_subscribers()
 
-    def skip_current_step(self, reason: Optional[str] = None) -> None:
+    async def skip_current_step(self, reason: Optional[str] = None) -> None:
         if self.current_step_index < len(self.steps):
             step = self.steps[self.current_step_index]
             step.skip(reason)
             self._update_progress()
-            self._notify_subscribers()
+            await self._notify_subscribers()
 
-    def complete_processing(self) -> None:
+    async def complete_processing(self) -> None:
         self.is_complete = True
         self.end_time = datetime.now()
         self.overall_progress = 100
-        self._notify_subscribers()
+        await self._notify_subscribers()
 
     def _update_progress(self) -> None:
         completed_percentage = 0

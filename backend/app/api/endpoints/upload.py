@@ -9,10 +9,11 @@ import asyncio
 from app.core.config import settings
 from app.services.pdf_processor import PDFProcessor
 from app.services.processing_status import create_pdf_processing_tracker
+from app.db.session import SessionLocal
 
 router = APIRouter()
 
-@router.post("/upload-proposal")
+@router.post("/upload")
 async def upload_proposal(
     background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
@@ -103,64 +104,69 @@ async def process_pdf_file(
         print(f"Error: Tracker {tracker_id} not found")
         return
     
-    try:
-        # Start processing
-        processor = PDFProcessor()
-        
-        # Step 1: Extract text
-        tracker.start_next_step(f"Iniciando extração de texto de {filename}")
-        text_content = await processor.extract_text(file_path)
-        tracker.complete_current_step(f"Extraído {len(text_content)} caracteres")
-        await asyncio.sleep(0.5)  # Small delay for UI updates
-        
-        # Step 2: Identify sections
-        tracker.start_next_step("Analisando estrutura do documento")
-        sections = await processor.identify_sections(text_content)
-        section_count = len(sections) if sections else 0
-        tracker.complete_current_step(f"Identificadas {section_count} seções")
-        await asyncio.sleep(0.5)
-        
-        # Step 3: Extract key information
-        tracker.start_next_step("Extraindo informações-chave")
-        keywords = await processor.extract_keywords(text_content)
-        entities = await processor.extract_entities(text_content)
-        info_count = len(keywords) + len(entities)
-        tracker.complete_current_step(f"Extraídas {info_count} informações-chave")
-        await asyncio.sleep(0.5)
-        
-        # Step 4: Vector indexing
-        tracker.start_next_step("Indexando conteúdo para busca semântica")
-        await processor.index_content(text_content, file_path)
-        tracker.complete_current_step("Indexação concluída")
-        await asyncio.sleep(0.5)
-        
-        # Step 5: Store metadata
-        tracker.start_next_step("Armazenando metadados")
-        metadata = {
-            "filename": filename,
-            "client_name": client_name,
-            "industry": industry,
-            "upload_time": datetime.now().isoformat(),
-            "file_path": file_path,
-            "section_count": section_count,
-            "keyword_count": len(keywords),
-            "entity_count": len(entities)
-        }
-        await processor.store_metadata(file_path, metadata)
-        tracker.complete_current_step("Metadados armazenados")
-        await asyncio.sleep(0.5)
-        
-        # Step 6: Finalization
-        tracker.start_next_step("Finalizando processamento")
-        # Any final processing steps here
-        tracker.complete_current_step("Documento pronto para uso")
-        
-        # Mark processing as complete
-        tracker.complete_processing()
-        
-    except Exception as e:
-        # If any step fails, mark the current step as failed
-        if tracker.get_current_step():
-            tracker.fail_current_step(e, f"Erro: {str(e)}")
-        tracker.complete_processing()
-        print(f"Error processing {filename}: {str(e)}")
+    # Create a new database session
+    async with SessionLocal() as session:
+        try:
+            # Start processing
+            processor = PDFProcessor()
+            
+            # Step 1: Extract text
+            await tracker.start_next_step(f"Iniciando extração de texto de {filename}")
+            text_content = await processor.extract_text(file_path)
+            await tracker.complete_current_step(f"Extraído {len(text_content)} caracteres")
+            await asyncio.sleep(0.5)  # Small delay for UI updates
+            
+            # Step 2: Create Document and identify sections
+            await tracker.start_next_step("Analisando estrutura do documento")
+            document = Document(filename=filename, content=text_content)
+            session.add(document)
+            await session.commit()
+            sections = await processor.identify_sections(document, session)
+            section_count = len(sections) if sections else 0
+            await tracker.complete_current_step(f"Identificadas {section_count} seções")
+            await asyncio.sleep(0.5)
+            
+            # Step 3: Extract key information
+            await tracker.start_next_step("Extraindo informações-chave")
+            keywords = await processor.extract_keywords(text_content)
+            entities = await processor.extract_entities(text_content)
+            info_count = len(keywords) + len(entities)
+            await tracker.complete_current_step(f"Extraídas {info_count} informações-chave")
+            await asyncio.sleep(0.5)
+            
+            # Step 4: Vector indexing
+            await tracker.start_next_step("Indexando conteúdo para busca semântica")
+            await processor.index_content(text_content, file_path)
+            await tracker.complete_current_step("Indexação concluída")
+            await asyncio.sleep(0.5)
+            
+            # Step 5: Store metadata
+            await tracker.start_next_step("Armazenando metadados")
+            metadata = {
+                "filename": filename,
+                "client_name": client_name,
+                "industry": industry,
+                "upload_time": datetime.now().isoformat(),
+                "file_path": file_path,
+                "section_count": section_count,
+                "keyword_count": len(keywords),
+                "entity_count": len(entities)
+            }
+            await processor.store_metadata(file_path, metadata)
+            await tracker.complete_current_step("Metadados armazenados")
+            await asyncio.sleep(0.5)
+            
+            # Step 6: Finalization
+            await tracker.start_next_step("Finalizando processamento")
+            # Any final processing steps here
+            await tracker.complete_current_step("Documento pronto para uso")
+            
+            # Mark processing as complete
+            await tracker.complete_processing()
+            
+        except Exception as e:
+            # If any step fails, mark the current step as failed
+            if tracker.get_current_step():
+                await tracker.fail_current_step(e, f"Erro: {str(e)}")
+            await tracker.complete_processing()
+            print(f"Error processing {filename}: {str(e)}")

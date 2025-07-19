@@ -40,6 +40,46 @@ flowchart LR
     G -->|"Export"| H
 ```
 
+### 🔍 Processamento Inteligente de Documentos
+
+O Propos4l utiliza um pipeline sofisticado de processamento de documentos que combina várias tecnologias de ponta:
+
+#### 1. Extração de Texto
+- Processamento direto de PDFs usando PyMuPDF
+- OCR (Reconhecimento Óptico de Caracteres) para páginas digitalizadas
+- Preservação de metadados de formatação (fontes, estilos, layouts)
+
+#### 2. Análise Inteligente
+- **Entidades**: Identificação de pessoas, empresas, locais e datas
+- **Termos Técnicos**: Reconhecimento de termos específicos da área de TI
+- **Palavras-Chave**: Extração das frases mais relevantes do documento
+- **Complexidade**: Análise da estrutura e complexidade do texto
+
+#### 3. Identificação de Seções
+- Detecção automática de seções comuns em propostas:
+  - Título e informações do projeto
+  - Contexto e situação atual
+  - Problema e necessidades do cliente
+  - Solução proposta
+  - Escopo e entregas
+  - Cronograma
+  - Investimento e custos
+  - Diferenciais competitivos
+
+#### 4. Otimizações de Performance
+- Processamento em lotes para maior eficiência
+- Cache inteligente para operações frequentes
+- Processamento paralelo de tarefas
+- Vetorização para busca semântica rápida
+
+#### 5. Monitoramento em Tempo Real
+- Interface visual com progresso detalhado
+- Barra de progresso animada
+- Tempo estimado de conclusão
+- Status de cada etapa do processamento
+- Indicadores de sucesso/erro
+- Métricas de performance
+
 ## 🏗️ Arquitetura do Sistema
 
 ### Visão Geral da Arquitetura
