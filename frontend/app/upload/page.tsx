@@ -8,7 +8,7 @@ import { useLoading } from '../contexts/LoadingContext'
 export default function Upload() {
   const router = useRouter()
   const { showToast } = useToast()
-  const { isLoading, withLoading } = useLoading()
+  const { isLoading, withLoading, setLoadingMessage } = useLoading()
   const [files, setFiles] = useState<File[]>([])
   const [metadata, setMetadata] = useState({
     client_name: '',
@@ -54,6 +54,8 @@ export default function Upload() {
 
     try {
       const uploadPromise = async () => {
+        // Set initial loading message
+        setLoadingMessage('Iniciando upload dos arquivos...')
         const response = await fetch('/api/upload-proposal', {
           method: 'POST',
           body: formData,
@@ -68,15 +70,17 @@ export default function Upload() {
         return result
       }
       
-      const result = await withLoading(uploadPromise())
+      const result = await withLoading(uploadPromise(), 'Enviando arquivos...')
       
       // Redirecionar para a página de status de processamento se houver tracking_ids
       if (result.tracking_ids && result.tracking_ids.length > 0) {
         if (result.tracking_ids.length === 1) {
           // Se for apenas um arquivo, redirecionar para a página de status desse arquivo
+          setLoadingMessage('Redirecionando para página de status...')
           router.push(`/processing-status?id=${result.tracking_ids[0]}`)
         } else {
           // Se forem múltiplos arquivos, redirecionar para o primeiro e mostrar mensagem
+          setLoadingMessage('Redirecionando para página de status...')
           router.push(`/processing-status?id=${result.tracking_ids[0]}`)
           showToast(`Processando ${result.tracking_ids.length} arquivos. Você pode acompanhar cada um individualmente.`, 'success')
         }

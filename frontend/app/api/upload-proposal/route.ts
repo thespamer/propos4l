@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Enviar para o backend
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://backend:8000';
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     const backendFormData = new FormData();
     
     // Adicionar os arquivos

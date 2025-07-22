@@ -19,9 +19,11 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8000
+      - NEXT_PUBLIC_API_URL=http://127.0.0.1:8000  # URL acessível pelo browser
+      - BACKEND_URL=http://backend:8000  # URL interna da rede Docker para SSR
       - NODE_ENV=development
       - NEXT_TELEMETRY_DISABLED=1
+      - DOCKER_CONTAINER=true
     depends_on:
       backend:
         condition: service_started
@@ -62,6 +64,10 @@ services:
       - PYTHONPATH=/app
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - DEBUG=1
+      - UVICORN_HOST=0.0.0.0
+      - UVICORN_PORT=8000
+      - UVICORN_FORWARDED_ALLOW_IPS=127.0.0.1
+      - UVICORN_PROXY_HEADERS=True
       - LOG_LEVEL=debug
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1

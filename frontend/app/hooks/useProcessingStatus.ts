@@ -52,11 +52,9 @@ export function useProcessingStatus(trackerId: string | null): UseProcessingStat
       return
     }
 
-    // Use backend URL from environment variable
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-    const wsProtocol = backendUrl.startsWith('https') ? 'wss:' : 'ws:'
-    const wsHost = backendUrl.replace(/^https?:\/\//, '')
-    const wsUrl = `${wsProtocol}//${wsHost}/ws/processing-status/${trackerId}`
+    // Use relative URLs for API calls to leverage Next.js proxy
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const wsUrl = `${wsProtocol}//${window.location.host}/ws/processing-status/${trackerId}`
 
     try {
       const newSocket = new WebSocket(wsUrl)

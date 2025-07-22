@@ -6,6 +6,9 @@ import { FormInput, Button, ProposalPreview, SuggestionPanel } from '../../compo
 import { useToast } from '../contexts/ToastContext'
 import { useLoading } from '../contexts/LoadingContext'
 import { debounce } from 'lodash'
+import EnhancedProcessingProgress from '../components/EnhancedProcessingProgress'
+import { useProcessingStatus } from '../hooks/useProcessingStatus'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface ProposalForm {
   client_name: string
@@ -51,6 +54,8 @@ export default function Generate() {
   })
   const [suggestions, setSuggestions] = useState<ProposalSuggestions | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [trackerId, setTrackerId] = useState<string | null>(null)
+  const { status: processingStatus, error: processingError } = useProcessingStatus(trackerId)
 
   // Get suggestions when form data changes
   useEffect(() => {
@@ -58,7 +63,7 @@ export default function Generate() {
       if (!formData.client_name || !formData.industry) return
       
       try {
-        const response = await fetch('http://localhost:8000/smart-suggestions', {
+        const response = await fetch('/api/smart-suggestions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData)
@@ -86,23 +91,26 @@ export default function Generate() {
     setIsGenerating(true)
 
     try {
-      const response = await withLoading(
-        fetch('http://localhost:8000/generate-proposal', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formData),
-        })
-      )
+      const response = await fetch('/api/generate-proposal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
 
       if (!response.ok) {
         throw new Error('Failed to generate proposal')
       }
 
       const result = await response.json()
-      showToast('Proposta gerada com sucesso!', 'success')
-      router.push(`/history/${result.id}`)
+      setTrackerId(result.id)
+      
+      // Aguardar conclusão do processamento
+      if (processingStatus?.isComplete) {
+        showToast('Proposta gerada com sucesso!', 'success')
+        router.push(`/history/${result.id}`)
+      }
     } catch (err) {
       showToast('Erro ao gerar proposta', 'error')
     } finally {
@@ -237,18 +245,54 @@ export default function Generate() {
         </div>
 
         <div className="space-y-6">
-          {/* Smart Suggestions Panel */}
-          {suggestions && (
-            <SuggestionPanel
-              contentSuggestions={suggestions.content_suggestions}
-              sectionSuggestions={suggestions.section_suggestions}
-              onApplySuggestion={handleApplySuggestion}
-              onAddSection={handleAddSection}
-            />
-          )}
+          {/* Processing Progress and Smart Suggestions */}
+          <AnimatePresence mode="wait">
+            {isGenerating ? (
+              <motion.div
+                key="progress"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="bg-white p-6 rounded-lg shadow-lg mb-6"
+              >
+                {processingStatus ? (
+                  <EnhancedProcessingProgress
+                    steps={processingStatus.steps}
+                    currentStepId={processingStatus.currentStepId}
+                    overallProgress={processingStatus.overallProgress}
+                    processingComplete={processingStatus.isComplete}
+                    fileName={processingStatus.fileName}
+                    onComplete={() => {
+                      showToast('Proposta gerada com sucesso!', 'success')
+                      router.push(`/history/${processingStatus.id}`)
+                    }}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center space-x-4 py-8">
+                    <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-lg text-gray-600">Iniciando processamento...</p>
+                  </div>
+                )}
+              </motion.div>
+            ) : suggestions ? (
+              <motion.div
+                key="suggestions"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+              >
+                <SuggestionPanel
+                  contentSuggestions={suggestions.content_suggestions}
+                  sectionSuggestions={suggestions.section_suggestions}
+                  onApplySuggestion={handleApplySuggestion}
+                  onAddSection={handleAddSection}
+                />
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
           
           {/* Preview Panel */}
-          {showPreview && (
+          {showPreview && !isGenerating && (
             <div className="lg:sticky lg:top-4 space-y-4">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
                 Preview da Proposta

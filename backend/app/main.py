@@ -29,6 +29,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",  # Frontend URL local
         "http://frontend:3000",    # Frontend URL Docker
+        "http://127.0.0.1:3000",  # Frontend URL local IPv4
+        "http://[::1]:3000",      # Frontend URL local IPv6
     ],
     allow_credentials=True,
     allow_methods=["*"],

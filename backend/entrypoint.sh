@@ -164,8 +164,8 @@ case "$1" in
     "serve")
         echo "Starting server in normal mode..."
         uvicorn app.main:app \
-            --host 0.0.0.0 \
-            --port 8000 \
+            --host ${UVICORN_HOST:-0.0.0.0} \
+            --port ${UVICORN_PORT:-8000} \
             --reload \
             --log-level ${LOG_LEVEL:-info}
         ;;

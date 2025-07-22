@@ -1,5 +1,34 @@
 /** @type {import('next').NextConfig} */
+
 const nextConfig = {
+  // Proxy configuration for backend API
+  async rewrites() {
+    // Determine backend URL based on environment
+    const isDocker = process.env.DOCKER_CONTAINER === 'true'
+    const backendUrl = isDocker
+      ? (process.env.BACKEND_URL || 'http://backend:8000')
+      : (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')
+
+    // Log environment configuration for debugging
+    console.log('Next.js Proxy Configuration:', {
+      isDocker,
+      backendUrl,
+      BACKEND_URL: process.env.BACKEND_URL,
+      NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+      DOCKER_CONTAINER: process.env.DOCKER_CONTAINER
+    })
+
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${backendUrl}/api/:path*`,
+      },
+      {
+        source: '/ws/:path*',
+        destination: `${backendUrl}/ws/:path*`,
+      },
+    ]
+  },
   reactStrictMode: true,
   output: 'standalone',
   poweredByHeader: false,

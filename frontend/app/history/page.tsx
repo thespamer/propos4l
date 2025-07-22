@@ -19,7 +19,7 @@ export default function History() {
   useEffect(() => {
     const fetchProposals = async () => {
       try {
-        const response = await fetch('http://localhost:8000/')
+        const response = await fetch('/api/')
         if (!response.ok) {
           throw new Error('Erro ao carregar propostas')
         }
@@ -38,7 +38,7 @@ export default function History() {
   }, [])
 
   const downloadProposal = (url: string) => {
-    window.open(`http://localhost:8000${url}`, '_blank')
+    window.open(url, '_blank')
   }
 
   if (loading) {

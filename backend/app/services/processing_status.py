@@ -194,34 +194,64 @@ def create_pdf_processing_tracker(file_name: str) -> ProcessingTracker:
     
     # Define standard PDF processing steps with their relative weights
     tracker.add_step(
+        "Inicialização OCR", 
+        "Preparando mecanismo de reconhecimento óptico de caracteres (OCR)", 
+        5.0
+    )
+    tracker.add_step(
         "Extração de Texto", 
-        "Extraindo texto e metadados do PDF", 
-        25.0
-    )
-    tracker.add_step(
-        "Identificação de Seções", 
-        "Analisando e classificando seções do documento", 
-        20.0
-    )
-    tracker.add_step(
-        "Extração de Informações-chave", 
-        "Identificando entidades, palavras-chave e resumos", 
-        20.0
-    )
-    tracker.add_step(
-        "Indexação Vetorial", 
-        "Convertendo texto em vetores para busca semântica", 
+        "Extraindo texto e metadados do PDF usando OCR avançado", 
         15.0
     )
     tracker.add_step(
-        "Armazenamento", 
-        "Salvando metadados e organizando informações", 
+        "Análise de Estrutura", 
+        "Identificando padrões de formatação e layout do documento", 
         10.0
+    )
+    tracker.add_step(
+        "Processamento Linguístico", 
+        "Aplicando modelo Spacy para análise linguística profunda", 
+        10.0
+    )
+    tracker.add_step(
+        "Extração de Entidades", 
+        "Identificando pessoas, organizações, valores e datas com IA", 
+        10.0
+    )
+    tracker.add_step(
+        "Análise de Palavras-chave", 
+        "Extraindo termos técnicos e frases relevantes com YAKE", 
+        10.0
+    )
+    tracker.add_step(
+        "Classificação de Seções", 
+        "Usando IA para identificar e categorizar seções do documento", 
+        10.0
+    )
+    tracker.add_step(
+        "Vetorização Semântica", 
+        "Gerando embeddings com modelo BERT para busca inteligente", 
+        10.0
+    )
+    tracker.add_step(
+        "Análise de Complexidade", 
+        "Avaliando métricas de complexidade e legibilidade do texto", 
+        5.0
+    )
+    tracker.add_step(
+        "Indexação", 
+        "Otimizando índices para busca rápida com FAISS", 
+        5.0
+    )
+    tracker.add_step(
+        "Armazenamento", 
+        "Salvando resultados e metadados processados", 
+        5.0
     )
     tracker.add_step(
         "Finalização", 
         "Concluindo processamento e disponibilizando documento", 
-        10.0
+        5.0
     )
     
     # Register the tracker

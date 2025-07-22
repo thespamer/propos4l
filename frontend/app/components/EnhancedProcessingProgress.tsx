@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Brain, Cpu, FileText, Database, ChevronRight, CheckCircle2, AlertCircle, Clock, Play } from 'lucide-react'
+import ProcessingStepCard from './ProcessingStepCard'
 
 type ProcessStep = {
   id: string
@@ -40,6 +42,7 @@ export default function EnhancedProcessingProgress({
   fileName
 }: EnhancedProcessingProgressProps) {
   const [animatedProgress, setAnimatedProgress] = useState(0)
+  const [showTechDetails, setShowTechDetails] = useState(false)
   const [metrics, setMetrics] = useState<ProcessingMetrics>({
     elapsedTime: 0,
     estimatedTimeRemaining: 0,
@@ -352,55 +355,83 @@ export default function EnhancedProcessingProgress({
         </AnimatePresence>
       </div>
 
+      {/* AI/NLP Tech Details Toggle */}
+      <div className="mb-6">
+        <button
+          onClick={() => setShowTechDetails(!showTechDetails)}
+          className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+        >
+          <Brain className="w-4 h-4" />
+          <span>{showTechDetails ? 'Ocultar' : 'Mostrar'} detalhes técnicos</span>
+          <motion.div
+            animate={{ rotate: showTechDetails ? 90 : 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </motion.div>
+        </button>
+      </div>
+
+      {/* Tech Details Panel */}
+      <AnimatePresence>
+        {showTechDetails && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-6 overflow-hidden"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex items-center space-x-3">
+                <Cpu className="w-5 h-5 text-purple-500" />
+                <div>
+                  <div className="text-sm font-medium text-gray-900">Velocidade de Processamento</div>
+                  <div className="text-sm text-gray-500">{metrics.processingSpeed.toFixed(1)} blocos/s</div>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <FileText className="w-5 h-5 text-blue-500" />
+                <div>
+                  <div className="text-sm font-medium text-gray-900">Taxa de Sucesso</div>
+                  <div className="text-sm text-gray-500">{metrics.successRate.toFixed(1)}%</div>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <Database className="w-5 h-5 text-green-500" />
+                <div>
+                  <div className="text-sm font-medium text-gray-900">Tempo Estimado Restante</div>
+                  <div className="text-sm text-gray-500">{formatTime(metrics.estimatedTimeRemaining)}</div>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <Brain className="w-5 h-5 text-indigo-500" />
+                <div>
+                  <div className="text-sm font-medium text-gray-900">Modelos em Uso</div>
+                  <div className="text-sm text-gray-500">Spacy, BERT, YAKE, FAISS</div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Processing steps list with animations */}
-      <div className="space-y-6">
+      <div className="space-y-4">
         <AnimatePresence>
           {steps.filter(step => !step.isInitStep).map((step) => (
             <motion.div
               key={step.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className={`flex items-start p-4 rounded-lg ${
-                step.status === 'processing' ? 'bg-blue-50 border border-blue-100' :
-                step.status === 'success' ? 'bg-green-50 border border-green-100' :
-                step.status === 'error' ? 'bg-red-50 border border-red-100' :
-                step.status === 'initializing' ? 'bg-indigo-50 border border-indigo-100' :
-                'bg-gray-50 border border-gray-100'
-              }`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
             >
-              <div className="flex-shrink-0">{getStepIcon(step)}</div>
-              <div className="ml-4 flex-1">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-lg font-medium text-gray-900">{step.name}</h4>
-                  <span className="text-sm font-medium text-gray-500">
-                    {step.percentageOfTotal}%
-                  </span>
-                </div>
-                <p className="text-sm text-gray-600 mt-1">{step.description}</p>
-                
-                {step.details && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="mt-2"
-                  >
-                    <div className="text-sm bg-white bg-opacity-50 p-3 rounded-md border border-current border-opacity-10">
-                      {step.details}
-                    </div>
-                  </motion.div>
-                )}
-
-                {step.startTime && (
-                  <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500">
-                    <span>Início: {new Date(step.startTime).toLocaleTimeString()}</span>
-                    {step.endTime && (
-                      <span>Fim: {new Date(step.endTime).toLocaleTimeString()}</span>
-                    )}
-                  </div>
-                )}
-              </div>
+              <ProcessingStepCard
+                name={step.name}
+                description={step.description}
+                status={step.status}
+                percentageOfTotal={step.percentageOfTotal}
+                isCurrentStep={step.id === currentStepId}
+              />
             </motion.div>
           ))}
         </AnimatePresence>

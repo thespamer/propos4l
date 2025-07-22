@@ -3,10 +3,12 @@
  * This endpoint proxies the health check to the backend
  */
 
+import { getBackendUrl } from '../../utils/config'
+
 export async function GET() {
   try {
-    // Get the backend URL from environment variable or use default
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://backend:8000';
+    // Get the backend URL based on execution context (server/client)
+    const backendUrl = getBackendUrl();
     
     // Make a request to the backend health endpoint
     const response = await fetch(`${backendUrl}/health`, {
